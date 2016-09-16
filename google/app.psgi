@@ -1,5 +1,6 @@
 use strict;
 use warnings;
+use Data::Dumper;
 use HTTP::Request::Common;
 use LWP::UserAgent;
 use Mojo::JSON ();
@@ -31,6 +32,8 @@ $routes->get('/auth')->name('auth')->to(
 
         my $res  = LWP::UserAgent->new->request(GET $uri->as_string);
         my $data = Mojo::JSON::decode_json($res->content);
+
+        die "client_id does not match" if $data->{aud} ne $client_id;
 
         my $google_account = {
             google_account_id => $data->{sub},
