@@ -8,4 +8,4 @@ HOW TO USE
 
     make
 
-    APP_ID={FACEBOOK APP ID} make up
+    APP_ID={FACEBOOK APP ID} APP_SECRET={FACEBOOK APP SECRET} make up
