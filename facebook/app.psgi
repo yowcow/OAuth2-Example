@@ -8,7 +8,6 @@ use Mojolicious::Lite;
 use URI;
 
 my $app_id     = $ENV{APP_ID};
-my $app_secret = $ENV{APP_SECRET};
 
 my $app = app();
 
