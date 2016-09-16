@@ -1,5 +1,6 @@
 requires 'HTTP::Request::Common';
 requires 'LWP::UserAgent';
+requires 'LWP::Protocol::https';
 requires 'Mojolicious';
 requires 'MojoX::Renderer::Xslate';
 requires 'Plack';
