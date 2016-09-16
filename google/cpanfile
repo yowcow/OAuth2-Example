@@ -1,0 +1,6 @@
+requires 'HTTP::Request::Common';
+requires 'LWP::UserAgent';
+requires 'Mojolicious';
+requires 'MojoX::Renderer::Xslate';
+requires 'Plack';
+requires 'URI';
