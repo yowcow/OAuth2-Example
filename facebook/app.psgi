@@ -1,13 +1,16 @@
 use strict;
 use warnings;
 use Data::Dumper;
+use Digest::SHA qw(hmac_sha256);
 use HTTP::Request::Common;
 use LWP::UserAgent;
+use MIME::Base64::URLSafe qw(urlsafe_b64decode);
 use Mojo::JSON;
 use Mojolicious::Lite;
 use URI;
 
 my $app_id     = $ENV{APP_ID};
+my $app_secret = $ENV{APP_SECRET};
 
 my $app = app();
 
@@ -24,10 +27,19 @@ $routes->get('/')->name('index')->to(
 
 $routes->get('/verify')->name('verify')->to(
     cb => sub {
-        my $c = shift;
-        my $params = $c->req->params->to_hash;
-        my $user_id      = $params->{user_id};
-        my $access_token = $params->{access_token};
+        my $c              = shift;
+        my $params         = $c->req->params->to_hash;
+        my $signed_request = $params->{signed_request};
+        my $access_token   = $params->{access_token};
+
+        my ($encoded_sig, $encoded_payload) = split /\./, $signed_request;
+
+        my $sig     = urlsafe_b64decode $encoded_sig;
+        my $payload = Mojo::JSON::decode_json(urlsafe_b64decode $encoded_payload);
+
+        die "Signature is invalid" if $sig ne hmac_sha256($encoded_payload, $app_secret);
+
+        my $user_id = $payload->{user_id};
 
         my $uri = URI->new('https://graph.facebook.com');
         $uri->path("/v2.7/${user_id}");
@@ -63,18 +75,14 @@ __DATA__
             console.log(response.authResponse);
             window.location.href = "/verify?access_token="
                 + encodeURIComponent(response.authResponse.accessToken)
-                + "&user_id="
-                + encodeURIComponent(response.authResponse.userID);
+                + "&signed_request="
+                + encodeURIComponent(response.authResponse.signedRequest);
         }
         else {
             console.log('NOT connected');
         }
     });
   }
-
-  window.fbAsyncInit = function () {
-    checkLoginState();
-  };
 
   (function(d, s, id) {
     var js, fjs = d.getElementsByTagName(s)[0];
