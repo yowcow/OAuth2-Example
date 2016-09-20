@@ -25,21 +25,55 @@ $routes->get('/')->name('index')->to(
     }
 );
 
+sub app_access_token {
+    my $uri = URI->new("https://graph.facebook.com/oauth/access_token");
+    $uri->query_form(
+        {   client_id     => $app_id,
+            client_secret => $app_secret,
+            grant_type    => 'client_credentials',
+        }
+    );
+
+    my $ua  = LWP::UserAgent->new;
+    my $res = $ua->request(GET $uri->as_string);
+
+    my %data = do {
+        my $response_uri = URI->new;
+        $response_uri->query($res->content);
+        $response_uri->query_form;
+    };
+
+    $data{access_token} or die "Failed fetching app_access_token";
+}
+
+sub verify_access_token {
+    my $input_token = shift;
+
+    my $uri = URI->new("https://graph.facebook.com/debug_token");
+    $uri->query_form(
+        {   input_token  => $input_token,
+            access_token => app_access_token(),
+        }
+    );
+
+    my $ua   = LWP::UserAgent->new;
+    my $res  = $ua->request(GET $uri->as_string);
+    my $data = Mojo::JSON::decode_json($res->content);
+
+    $data->{data}{app_id} eq $app_id;
+}
+
 $routes->get('/verify')->name('verify')->to(
     cb => sub {
-        my $c              = shift;
-        my $params         = $c->req->params->to_hash;
-        my $signed_request = $params->{signed_request};
-        my $access_token   = $params->{access_token};
+        my $c            = shift;
+        my $params       = $c->req->params->to_hash;
+        my $user_id      = $params->{user_id};
+        my $access_token = $params->{access_token};
 
-        my ($encoded_sig, $encoded_payload) = split /\./, $signed_request;
-
-        my $sig     = urlsafe_b64decode $encoded_sig;
-        my $payload = Mojo::JSON::decode_json(urlsafe_b64decode $encoded_payload);
-
-        die "Signature is invalid" if $sig ne hmac_sha256($encoded_payload, $app_secret);
-
-        my $user_id = $payload->{user_id};
+        VERIFY: {
+            verify_access_token($access_token)
+                or die "Failed fetching debug_token";
+        }
 
         my $uri = URI->new('https://graph.facebook.com');
         $uri->path("/v2.7/${user_id}");
@@ -49,7 +83,7 @@ $routes->get('/verify')->name('verify')->to(
             }
         );
 
-        my $res = LWP::UserAgent->new->request(GET $uri->as_string);
+        my $res              = LWP::UserAgent->new->request(GET $uri->as_string);
         my $facebook_account = Mojo::JSON::decode_json($res->content);
 
         $c->stash->{facebook_account} = $facebook_account;
@@ -75,8 +109,8 @@ __DATA__
             console.log(response.authResponse);
             window.location.href = "/verify?access_token="
                 + encodeURIComponent(response.authResponse.accessToken)
-                + "&signed_request="
-                + encodeURIComponent(response.authResponse.signedRequest);
+                + "&user_id="
+                + encodeURIComponent(response.authResponse.userID);
         }
         else {
             console.log('NOT connected');
