@@ -1,10 +1,8 @@
 use strict;
 use warnings;
 use Data::Dumper;
-use Digest::SHA qw(hmac_sha256);
 use HTTP::Request::Common;
 use LWP::UserAgent;
-use MIME::Base64::URLSafe qw(urlsafe_b64decode);
 use Mojo::JSON;
 use Mojolicious::Lite;
 use URI;
@@ -67,7 +65,6 @@ $routes->get('/verify')->name('verify')->to(
     cb => sub {
         my $c            = shift;
         my $params       = $c->req->params->to_hash;
-        my $user_id      = $params->{user_id};
         my $access_token = $params->{access_token};
 
         VERIFY: {
@@ -76,7 +73,7 @@ $routes->get('/verify')->name('verify')->to(
         }
 
         my $uri = URI->new('https://graph.facebook.com');
-        $uri->path("/v2.7/${user_id}");
+        $uri->path("/v2.7/me");
         $uri->query_form(
             {   fields       => 'email',
                 access_token => $access_token,
@@ -85,6 +82,8 @@ $routes->get('/verify')->name('verify')->to(
 
         my $res              = LWP::UserAgent->new->request(GET $uri->as_string);
         my $facebook_account = Mojo::JSON::decode_json($res->content);
+
+        print Dumper $facebook_account;
 
         $c->stash->{facebook_account} = $facebook_account;
     }
@@ -108,9 +107,7 @@ __DATA__
         if (response.status === 'connected') {
             console.log(response.authResponse);
             window.location.href = "/verify?access_token="
-                + encodeURIComponent(response.authResponse.accessToken)
-                + "&user_id="
-                + encodeURIComponent(response.authResponse.userID);
+                + encodeURIComponent(response.authResponse.accessToken);
         }
         else {
             console.log('NOT connected');

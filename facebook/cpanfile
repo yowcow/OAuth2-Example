@@ -1,8 +1,6 @@
-requires 'Digest::SHA';
 requires 'HTTP::Request::Common';
 requires 'LWP::UserAgent';
 requires 'LWP::Protocol::https';
-requires 'MIME::Base64::URLSafe';
 requires 'Mojolicious';
 requires 'MojoX::Renderer::Xslate';
 requires 'Plack';
